@@ -1,9 +1,11 @@
 package block
 
 import (
+	"encoding/json"
 	"strings"
 
 	"github.com/blocknetdx/btcd/chaincfg"
+	btcsuitechaincfg "github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcutil"
 )
 
@@ -45,15 +47,28 @@ func (b *Bridge) IsP2shAddress(addr string) bool {
 	return ok
 }
 
+func convertToBTCSuiteChainCfg(cfg interface{}) *btcsuitechaincfg.Params {
+	bcfg := btcsuitechaincfg.Params{}
+	bz, err := json.Marshal(cfg)
+	if err != nil {
+		panic("invalid config")
+	}
+	err = json.Unmarshal(bz, &bcfg)
+	if err != nil {
+		panic("error unmarshaling config to btcsuite")
+	}
+	return &bcfg
+}
+
 // GetChainConfig get chain config (net params)
-func (b *Bridge) GetChainConfig() *chaincfg.Params {
+func (b *Bridge) GetChainConfig() *btcsuitechaincfg.Params {
 	token := b.TokenConfig
 	networkID := strings.ToLower(token.NetID)
 	switch networkID {
 	case netMainnet:
-		return &chaincfg.MainNetParams
+		return convertToBTCSuiteChainCfg(chaincfg.MainNetParams)
 	case netTestnet3:
-		return &chaincfg.TestNet3Params
+		return convertToBTCSuiteChainCfg(chaincfg.TestNet3Params)
 	}
-	return &chaincfg.TestNet3Params
+	return convertToBTCSuiteChainCfg(chaincfg.TestNet3Params)
 }

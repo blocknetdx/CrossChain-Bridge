@@ -1,6 +1,7 @@
 package block
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -9,7 +10,9 @@ import (
 	"github.com/anyswap/CrossChain-Bridge/tokens/btc/electrs"
 	"github.com/anyswap/CrossChain-Bridge/tokens/tools"
 	"github.com/blocknetdx/btcd/chaincfg/chainhash"
+	btcsuitehash "github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/blocknetdx/btcd/wire"
+	btcsuitewire "github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcutil"
 	"github.com/btcsuite/btcwallet/wallet/txauthor"
 )
@@ -25,7 +28,7 @@ func (b *Bridge) BuildAggregateTransaction(addrs []string, utxos []*electrs.Elec
 		return nil, err
 	}
 
-	inputSource := func(target btcutil.Amount) (total btcutil.Amount, inputs []*wire.TxIn, inputValues []btcutil.Amount, scripts [][]byte, err error) {
+	inputSource := func(target btcutil.Amount) (total btcutil.Amount, inputs []*btcsuitewire.TxIn, inputValues []btcutil.Amount, scripts [][]byte, err error) {
 		return b.getUtxosFromElectUtxos(target, addrs, utxos)
 	}
 
@@ -46,7 +49,7 @@ func (b *Bridge) rebuildAggregateTransaction(prevOutPoints []*tokens.BtcOutPoint
 	return b.BuildAggregateTransaction(addrs, utxos)
 }
 
-func (b *Bridge) getUtxosFromElectUtxos(target btcutil.Amount, addrs []string, utxos []*electrs.ElectUtxo) (total btcutil.Amount, inputs []*wire.TxIn, inputValues []btcutil.Amount, scripts [][]byte, err error) {
+func (b *Bridge) getUtxosFromElectUtxos(target btcutil.Amount, addrs []string, utxos []*electrs.ElectUtxo) (total btcutil.Amount, inputs []*btcsuitewire.TxIn, inputValues []btcutil.Amount, scripts [][]byte, err error) {
 	var (
 		txHash   *chainhash.Hash
 		value    btcutil.Amount
@@ -80,11 +83,11 @@ func (b *Bridge) getUtxosFromElectUtxos(target btcutil.Amount, addrs []string, u
 		}
 
 		txHash, _ = chainhash.NewHashFromStr(*utxo.Txid)
-		prevOutPoint := wire.NewOutPoint(txHash, *utxo.Vout)
+		prevOutPoint := wire.NewOutPoint((*btcsuitehash.Hash)(txHash), *utxo.Vout)
 		txIn := wire.NewTxIn(prevOutPoint, pkScript, nil)
 
 		total += value
-		inputs = append(inputs, txIn)
+		inputs = append(inputs, convertToBTCSuiteWireTxIn(txIn))
 		inputValues = append(inputValues, value)
 		scripts = append(scripts, pkScript)
 	}
@@ -94,6 +97,19 @@ func (b *Bridge) getUtxosFromElectUtxos(target btcutil.Amount, addrs []string, u
 	}
 
 	return total, inputs, inputValues, scripts, nil
+}
+
+func convertToBTCSuiteWireTxIn(txIn interface{}) *btcsuitewire.TxIn {
+	bTxIn := btcsuitewire.TxIn{}
+	bz, err := json.Marshal(txIn)
+	if err != nil {
+		panic("invalid wire TxIn")
+	}
+	err = json.Unmarshal(bz, &bTxIn)
+	if err != nil {
+		panic("error unmarshaling TxIn to btcsuite")
+	}
+	return &bTxIn
 }
 
 func (b *Bridge) getUtxosFromOutPoints(prevOutPoints []*tokens.BtcOutPoint) (addrs []string, utxos []*electrs.ElectUtxo, err error) {

@@ -6,13 +6,13 @@ import (
 	"github.com/anyswap/CrossChain-Bridge/common"
 	"github.com/anyswap/CrossChain-Bridge/tokens"
 	"github.com/anyswap/CrossChain-Bridge/tokens/tools"
-	"github.com/blocknetdx/btcd/chaincfg"
+	btcsuitechaincfg "github.com/btcsuite/btcd/chaincfg"
 	"github.com/blocknetdx/btcd/txscript"
 	"github.com/btcsuite/btcutil"
 )
 
 // GetP2shAddressWithMemo common
-func GetP2shAddressWithMemo(memo, pubKeyHash []byte, net *chaincfg.Params) (p2shAddress string, redeemScript []byte, err error) {
+func GetP2shAddressWithMemo(memo, pubKeyHash []byte, net *btcsuitechaincfg.Params) (p2shAddress string, redeemScript []byte, err error) {
 	redeemScript, err = txscript.NewScriptBuilder().
 		AddData(memo).AddOp(txscript.OP_DROP).
 		AddOp(txscript.OP_DUP).AddOp(txscript.OP_HASH160).AddData(pubKeyHash).
